@@ -1,3 +1,7 @@
+; Copyright (c) 2011, Peter Brottveit Bock
+; Released under the BSD 3-Clause License
+; See: https://raw.github.com/peterbb/compiler/master/LICENSE
+
 
 declare void @exit(i64)
 declare i64* @malloc(i64)

@@ -1,3 +1,9 @@
+; Copyright (c) 2011, Peter Brottveit Bock
+; Released under the BSD 3-Clause License
+; See: https://raw.github.com/peterbb/compiler/master/LICENSE
+
+
+
 
 (define (make-application1 op arg)
   (make-application op (list arg)))

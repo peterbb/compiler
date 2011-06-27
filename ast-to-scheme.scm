@@ -1,3 +1,6 @@
+; Copyright (c) 2011, Peter Brottveit Bock
+; Released under the BSD 3-Clause License
+; See: https://raw.github.com/peterbb/compiler/master/LICENSE
 
 (define ast->scheme/with-globals
   (lambda (exp globals)
