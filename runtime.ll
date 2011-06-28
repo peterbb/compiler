@@ -13,16 +13,6 @@ declare i32 @printf(i8*, ...)
 declare i32 @ungetc(i32, i8*)
 declare i64* @fdopen(i64, i8*)
 
-@stdin = global i64* null
-
-define void @init-stdin() {
-    %file = call i64* @fdopen(i64 0, i8* bitcast([2 x i8]* @stdin-mode to i8*))
-    store i64* %file, i64** @stdin
-    ret void
-}
-
-@stdin-mode = constant [2 x i8] c"w\00"
-
 ;;; Tags:
 ;;; Number:      00
 ;;; Character : 001
