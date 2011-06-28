@@ -288,7 +288,6 @@
 	 (debug-label (llvm:gensym "@debug-string"))
 	 (debug-length (+ 1 (string-length debug-name)))
 	 (debug-tmp (llvm:gensym "%tmp")))
-    (printf "; args=~a~%;rel=~a~%;-----------~%" args arity-rel)
     (append
      (list
       (sprintf "define private protected cc 10 void ~a(%t_obj %env, %t_obj %arity) noreturn {" label)
