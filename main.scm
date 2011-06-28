@@ -23,14 +23,6 @@
 	 (ast* (parse with-prelude)))
     (k ast* (map cdr *global-variables*))))
 
-(define (make-print header)
-  (lambda (k)
-    (lambda (ast globals)
-      (printf ";;;; ~a~%" header)
-      (map pp (ast->scheme/with-globals ast globals))
-      (printf "~%")
-      (k ast globals))))
-
 (define (make-raw-print* header)
   (lambda (k)
     (lambda (ast globals)
