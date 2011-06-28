@@ -300,7 +300,7 @@
       "signal-arity-error:"
       (sprintf "~a = bitcast [~a x i8]* ~a to i8*"
 	       debug-tmp debug-length debug-label)
-      (sprintf "call void @scheme-arity-error(i8* ~a, %t_obj %arity, %t_obj ~a)"
+      (sprintf "call void @scheme-arity-error(i8* ~a, %t_obj ~a, %t_obj %arity)"
 	       debug-tmp arity)
       "unreachable"
       "}"
