@@ -3,15 +3,12 @@
 ; See: https://raw.github.com/peterbb/compiler/master/LICENSE
 
 
-declare void @exit(i64)
-declare i64* @malloc(i64)
-declare i64* @calloc(i64, i64)
-declare i64 @puts(i8*)
+declare void @exit(i32)
+declare i8* @malloc(i64)
+declare void @bzero(i8*, i64)
 declare i32 @getchar()
 declare i32 @putchar(i32)
 declare i32 @printf(i8*, ...)
-declare i32 @ungetc(i32, i8*)
-declare i64* @fdopen(i64, i8*)
 
 ;;; Tags:
 ;;; Number:      00
@@ -31,6 +28,20 @@ declare i64* @fdopen(i64, i8*)
 %t_pair = type { %t_obj, %t_obj } ; {car, cdr}
 %t_closure = type { %t_code, %t_obj } ; { code, env }
 %t_string = type { %t_obj, [0 x %t_obj ] }
+
+define i64* @alloc(i64 %elements) {
+    %size = shl i64 %elements, 3 ; %elements * 8
+    %ptr = call i8* @malloc(i64 %size)
+    %is-null = icmp eq i8* %ptr, null
+    br i1 %is-null, label %out-of-memory, label %kont1
+kont1:
+    call void @bzero(i8* %ptr, i64 %size)
+    %ptr.i64 = bitcast i8* %ptr to i64*
+    ret i64* %ptr.i64
+out-of-memory:
+    call void @exit(i32 12)
+    unreachable
+}
 
 
 ;;;=================================================================
@@ -140,7 +151,7 @@ define %t_obj @get-nil() {
 ;;;=================================================================
 
 define %t_obj @make-pair(%t_obj %a, %t_obj %b) {
-    %raw_ptr = call i64* @malloc(i64 16)
+    %raw_ptr = call i64* @alloc(i64 2)
     %pair_ptr = bitcast i64* %raw_ptr to %t_pair*
 
     %car_ptr = getelementptr %t_pair* %pair_ptr, i32 0, i32 0
@@ -229,7 +240,7 @@ define void @set-cdr(%t_obj %pair, %t_obj %value) {
 ;;; %t_closure = type { %t_code, %t_obj } ; { code, env }
 
 define %t_obj @make-closure(%t_code %code, %t_obj %env) {
-    %raw_ptr = call i64* @malloc(i64 12)
+    %raw_ptr = call i64* @alloc(i64 2)
     %closure_ptr = bitcast i64* %raw_ptr to %t_closure*
 
     %code_ptr =  getelementptr %t_closure* %closure_ptr, i32 0, i32 0
@@ -293,7 +304,7 @@ not-closure:
 define %t_obj @make-string(%t_obj %num) {
     %elements.1 = call i64 @num-to-i64(%t_obj %num)
     %elements = add %t_obj %elements.1, 1
-    %raw_ptr = call i64* @calloc(i64 8, i64 %elements)
+    %raw_ptr = call i64* @alloc(i64 %elements)
     %str_ptr = bitcast i64* %raw_ptr to %t_string*
     %size_ptr = getelementptr %t_string* %str_ptr, i32 0, i32 0
     store %t_obj %num, %t_obj* %size_ptr
@@ -409,8 +420,8 @@ return-true:
 ;;;=================================================================
 
 define cc 10 void @halt-continuation-proc(%t_obj %env, %t_obj %arity) {
-    call i64 @puts(i8* bitcast([9 x i8]* @exit-msg to i8*))
-    call void @exit(i64 0) noreturn
+    call i32(i8*,...)* @printf(i8* bitcast([9 x i8]* @exit-msg to i8*))
+    call void @exit(i32 0) noreturn
     unreachable
 }
 @halt-closure = constant %t_closure { %t_code @halt-continuation-proc, %t_obj 23 }, align 8
@@ -422,8 +433,8 @@ define cc 10 void @halt-continuation-proc(%t_obj %env, %t_obj %arity) {
 ;;;=================================================================
 
 define void @scheme-error(i8* %msg) noreturn {
-    call i64 @puts(i8* %msg)
-    call void @exit(i64 1) noreturn
+    call i32(i8*,...)* @printf(i8* %msg)
+    call void @exit(i32 1) noreturn
     unreachable
 }
 
@@ -449,7 +460,7 @@ define void @scheme-arity-error(i8* %c, %t_obj %e, %t_obj %g) noreturn {
     %gg = ashr %t_obj %g, 2
     %fmt = bitcast [37 x i8]* @arity-error-fmt to i8*
     call i32(i8*,...)* @printf(i8* %fmt, i8* %c, i64 %ee, i64 %gg)
-    call void @exit(i64 1)
+    call void @exit(i32 1)
     unreachable
 }
 @arity-error-fmt = constant [37 x i8] c"\0Aerror: %s expected %ld, given %ld.\0A\00"
