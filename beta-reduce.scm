@@ -47,7 +47,8 @@
   (lambda (ast)
     (make-lambda
      (lambda-variable* ast)
-     (beta-reduce (lambda-body ast)))))
+     (beta-reduce (lambda-body ast))
+     (lambda-debug-name ast))))
 
 (define beta-reduce-set!
   (lambda (ast)
@@ -109,7 +110,8 @@
   (lambda (exp var sub)
     (make-lambda
      (lambda-variable* exp)
-     (substitute (lambda-body exp) var sub))))
+     (substitute (lambda-body exp) var sub)
+     (lambda-debug-name exp))))
 
 (define substitute-ar
   (lambda (exp var sub)

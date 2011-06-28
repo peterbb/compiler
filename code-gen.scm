@@ -283,7 +283,11 @@
 	 (arity (* 4 (lambda-arity)))
 	 (arity-rel (arity-relation))
 	 (lambda-code (ast->code (lambda-body ast) "%dummy"
-				 (cons args lex-env))))
+				 (cons args lex-env)))
+	 (debug-name (symbol->string (lambda-debug-name ast)))
+	 (debug-label (llvm:gensym "@debug-string"))
+	 (debug-length (+ 1 (string-length debug-name)))
+	 (debug-tmp (llvm:gensym "%tmp")))
     (printf "; args=~a~%;rel=~a~%;-----------~%" args arity-rel)
     (append
      (list
@@ -295,15 +299,20 @@
      (list
       "unreachable"
       "signal-arity-error:"
-      "call void @print-int(i64 %arity)"
-      (sprintf "call void @print-int(i64 ~a)" arity)
-      "call void @scheme-arity-error()"
+      (sprintf "~a = bitcast [~a x i8]* ~a to i8*"
+	       debug-tmp debug-length debug-label)
+      (sprintf "call void @scheme-arity-error(i8* ~a, %t_obj %arity, %t_obj ~a)"
+	       debug-tmp arity)
       "unreachable"
-      "}"))))
+      "}"
+      (sprintf "~a = constant [~a x i8] c\"~a\\00\""
+	       debug-label debug-length debug-name)))))
+
 
 (define (ast->code:ar ast target lex-env)
   (ast->code:lambda (make-lambda (list (activation-record-variable ast))
-				 (activation-record-body ast))
+				 (activation-record-body ast)
+				 'ar)
 		    target
 		    lex-env))
 

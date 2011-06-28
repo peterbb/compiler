@@ -454,9 +454,13 @@ define void @print-int(i64 %val) {
 
 @print-int-fmt = constant [5 x i8] c"%ld\0A\00"
 
-define void @scheme-arity-error() noreturn {
-    call void @scheme-error(i8* bitcast([15 x i8]* @arity-error-msg to i8*))
+define void @scheme-arity-error(i8* %c, %t_obj %e, %t_obj %g) noreturn {
+    %ee = ashr %t_obj %e, 2
+    %gg = ashr %t_obj %g, 2
+    %fmt = bitcast [37 x i8]* @arity-error-fmt to i8*
+    call i32(i8*,...)* @printf(i8* %fmt, i8* %c, i64 %ee, i64 %gg)
+    call void @exit(i64 1)
     unreachable
 }
-@arity-error-msg = constant [15 x i8] c"\0Aerror: arity\0A\00"
+@arity-error-fmt = constant [37 x i8] c"\0Aerror: %s expected %ld, given %ld.\0A\00"
 

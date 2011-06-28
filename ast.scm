@@ -155,12 +155,12 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Lambda
-(define (make-lambda var* body)
+(define (make-lambda var* body debug-name)
   (define (fixed-arity? var*)
     (or (null? var*)
 	(and (local-variable? (car var*))
 	     (fixed-arity? (cdr var*)))))
-  (list 'lambda  var* body (fixed-arity? var*)))
+  (list 'lambda  var* body (fixed-arity? var*) debug-name))
 
 (define (lambda? e)
   (tagged-list? e 'lambda))
@@ -176,6 +176,10 @@
 (define (lambda-fixed-arity? e)
   (assert (lambda? e) "lambda-fixed-arity?")
   (list-ref e 3))
+
+(define (lambda-debug-name e)
+  (assert (lambda? e) "lambda-debug-name")
+  (list-ref e 4))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;,
 ;;; Application

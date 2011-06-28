@@ -107,7 +107,8 @@
 	k1
 	(make-lambda
 	 (cons k2 vars)
-	 (make-application1 (cps-convert-exp body) k2)))))))
+	 (make-application1 (cps-convert-exp body) k2)
+	 (lambda-debug-name exp)))))))
 
 ;;; F[(if e1 e2 e3)] ==> ?
 (define cps-convert-if
