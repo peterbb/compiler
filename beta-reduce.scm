@@ -102,7 +102,7 @@
   (lambda (exp var sub)
     (make-application
      (substitute (application-procedure exp) var sub)
-     (%map (lambda (e) (substitute e var sub))
+     (map (lambda (e) (substitute e var sub))
 	  (application-arguments exp)))))
 
 (define substitute-lambda

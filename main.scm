@@ -2,29 +2,12 @@
 ; Released under the BSD 3-Clause License
 ; See: https://raw.github.com/peterbb/compiler/master/LICENSE
 
-
-(define (%map f l)
-  (if (null? l)
-      '()
-      (cons (f (car l))
-	    (%map f (cdr l)))))
-
-(define (%map2 f l1 l2)
-  (if (null? l1)
-      '()
-      (cons (f (car l1) (car l2))
-	    (%map2 f (cdr l1) (cdr l2)))))
-
-(define (%pp x)
-  (pp x))
-
 (load "ast.scm")
 (load "parse.scm")
 (load "gensym.scm")
 (load "io.scm")
 (load "cps.scm")
 (load "beta-reduce.scm")
-(load "ast-to-scheme.scm")
 (load "llvm.scm")
 (load "code-gen.scm")
 (load "builtin.scm")
@@ -44,16 +27,7 @@
   (lambda (k)
     (lambda (ast globals)
       (printf ";;;; ~a~%" header)
-      (%map %pp
-	   (ast->scheme/with-globals ast globals))
-      (printf "~%")
-      (k ast globals))))
-
-(define (make-print* header)
-  (lambda (k)
-    (lambda (ast globals)
-      (printf ";;;; ~a~%" header)
-      (%map %pp (ast->scheme ast))
+      (map pp (ast->scheme/with-globals ast globals))
       (printf "~%")
       (k ast globals))))
 
@@ -61,7 +35,7 @@
   (lambda (k)
     (lambda (ast globals)
       (printf ";;;; ~a~%" header)
-      ( %pp ast)
+      (pp ast)
       (printf "~%")
       (k ast globals))))
 
@@ -103,16 +77,9 @@
 
 ;;;;;;
 (define stages
-  (list (cons "print" (make-print* "ast"))
-	(cons "raw-print" (make-raw-print* "ast"))
+  (list	(cons "raw-print" (make-raw-print* "ast"))
 	(cons "cps" cps-stage)
 	(cons "beta" beta-stage)
-	(cons "cps-print"
-	      (compose-stages cps-stage
-			      (make-print "cps")))
-	(cons "beta-print"
-	      (compose-stages beta-stage
-			      (make-print "beta")))
 	(cons "code" gen-stage)
 	(cons "code-print" (compose-stages gen-stage gen-print))))
 
