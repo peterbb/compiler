@@ -327,8 +327,8 @@
       (if? ast)
       (lambda? ast)
       (application? ast)
-      (assignmnet? ast)
-      (assignmnet/k? ast)
+      (assignment? ast)
+      (assignment/k? ast)
       (halt-continuation? ast)))
 
 
