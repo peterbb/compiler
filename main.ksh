@@ -12,7 +12,8 @@ if [[ $# -eq 1 ]]; then
     #csi -script ./main.scm $1 cps beta code-print) | llc | as
     csc -lpthread ./main.scm
     #./main $1 cps beta code-print | llc
-    preludeandcompile $1 | llc -tailcallopt | gcc -x assembler-with-cpp - && ./a.out
+    preludeandcompile $1 | llc -tailcallopt | gcc -x assembler-with-cpp -
+    MALLOC_OPTIONS=X ./a.out
 #    preludeandcompile $1 | llvm-as | lli 
 else
     echo "usage: " $0 " <filename>"
