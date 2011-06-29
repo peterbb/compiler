@@ -63,6 +63,19 @@ define i1 @is-number(%t_obj %a) {
     ret i1 %res
 }
 
+define void @assert-number(%t_obj %o) {
+    %ok = call i1 @is-number(%t_obj %o)
+    br i1 %ok, label %return, label %signal-error
+return:
+    ret void
+signal-error:
+    %fmt = bitcast [16 x i8]* @assert-number-fmt to i8*
+    call i32(i8*,...)* @printf(i8* %fmt)
+    call void @exit(i32 1)
+    unreachable
+}
+@assert-number-fmt = constant [16 x i8] c"\0Aassert-number\0A\00"
+
 define %t_obj @add-numbers(%t_obj %a, %t_obj %b) {
     %res = add nsw %t_obj %a, %b
     ret %t_obj %res
@@ -181,7 +194,19 @@ define i1 @is-pair(%t_obj %o) {
     ret i1 %res
 }
 
+define void @assert-pair(%t_obj %pair) {
+    %valid = call i1 @is-pair(%t_obj %pair)
+    br i1 %valid, label %ok, label %signal-error
+ok:
+    ret void
+signal-error:
+    call void @scheme-error(i8* bitcast([14 x i8]* @get-pair-error to i8*))
+    unreachable
+}
+@get-pair-error = constant [14 x i8] c"\0Aerror: pair\0A\00"
+
 define %t_obj* @get-car-location(%t_obj %pair) {
+    call void @assert-pair(%t_obj %pair)
     %untagged = and %t_obj %pair, sext(i4 8 to %t_obj)
     %pair_ptr = inttoptr %t_obj %untagged to %t_pair*
     %car_ptr = getelementptr %t_pair* %pair_ptr, i32 0, i32 0
@@ -189,18 +214,11 @@ define %t_obj* @get-car-location(%t_obj %pair) {
 }
 
 define %t_obj @get-car(%t_obj %pair) {
-    %valid = call i1 @is-pair(%t_obj %pair)
-    br i1 %valid, label %ok, label %signal-error
-ok:
     %car_ptr = call %t_obj* @get-car-location(%t_obj %pair)
     %value = load %t_obj* %car_ptr
     ret %t_obj %value
-
-signal-error:
-    call void @scheme-error(i8* bitcast([12 x i8]* @get-car-error to i8*))
-    unreachable
 }
-@get-car-error = constant [12 x i8] c"error %car\0A\00"
+
 
 define void @set-car(%t_obj %pair, %t_obj %value) {
     %car_ptr = call %t_obj* @get-car-location(%t_obj %pair)
@@ -209,6 +227,7 @@ define void @set-car(%t_obj %pair, %t_obj %value) {
 }
 
 define %t_obj* @get-cdr-location(%t_obj %pair) {
+    call void @assert-pair(%t_obj %pair)
     %untagged = and %t_obj %pair, sext(i4 8 to %t_obj)
     %pair_ptr = inttoptr %t_obj %untagged to %t_pair*
     %cdr_ptr = getelementptr %t_pair* %pair_ptr, i32 0, i32 1
@@ -216,17 +235,10 @@ define %t_obj* @get-cdr-location(%t_obj %pair) {
 }
 
 define %t_obj @get-cdr(%t_obj %pair) {
-    %valid = call i1 @is-pair(%t_obj %pair)
-    br i1 %valid, label %ok, label %signal-error
-ok:
     %cdr_ptr = call %t_obj* @get-cdr-location(%t_obj %pair)
     %value = load %t_obj* %cdr_ptr
     ret %t_obj %value
-signal-error:
-    call void @scheme-error(i8* bitcast([12 x i8]* @get-cdr-error to i8*))
-    unreachable
 }
-@get-cdr-error = constant [12 x i8] c"error %cdr\0A\00"
 
 define void @set-cdr(%t_obj %pair, %t_obj %value) {
     %cdr_ptr = call %t_obj* @get-cdr-location(%t_obj %pair)
@@ -277,7 +289,7 @@ define %t_obj @get-env(%t_obj %o) {
     ret %t_obj %env
 }
 
-define cc 10 void @apply(%t_obj %closure, %t_obj %given.arity, %t_obj %args) noreturn {
+define fastcc void @apply(%t_obj %closure, %t_obj %given.arity, %t_obj %args) noreturn {
     %closure-ok = call i1 @is-closure(%t_obj %closure)
     br i1 %closure-ok, label %next, label %not-closure
 next:
@@ -285,7 +297,7 @@ next:
     %closure.env = call %t_obj @get-env(%t_obj %closure)
 
     %new-env = call %t_obj @make-pair(%t_obj %args, %t_obj %closure.env)
-    tail call cc 10 void %closure.code(%t_obj %new-env, %t_obj %given.arity) noreturn
+    tail call fastcc void %closure.code(%t_obj %new-env, %t_obj %given.arity) noreturn
     unreachable
 
 not-closure:
@@ -320,7 +332,21 @@ define i1 @is-string(%t_obj %o) {
     ret i1 %res
 }
 
+define void @assert-string(%t_obj %o) {
+    %is-ok = call i1 @is-string(%t_obj %o)
+    br i1 %is-ok, label %return, label %signal-error
+return:
+    ret void
+signal-error:
+    %fmt = bitcast [23 x i8]* @assert-string-fmt to i8*
+    call i32(i8*,...)* @printf(i8* %fmt)
+    call void @exit(i32 1)
+    unreachable
+}
+@assert-string-fmt = constant [23 x i8] c"\0Aerror: assert-string\0A\00"
+
 define %t_obj @string-length(%t_obj %tagged_obj) {
+    call void @assert-string(%t_obj %tagged_obj)
     %untagged_obj = and %t_obj %tagged_obj, sext(i4 8 to %t_obj)
     %str_ptr = inttoptr %t_obj %untagged_obj to %t_string*
     %size_ptr = getelementptr %t_string* %str_ptr, i32 0, i32 0
@@ -328,12 +354,31 @@ define %t_obj @string-length(%t_obj %tagged_obj) {
     ret %t_obj %size
 }
 
-define %t_obj* @string-location(%t_obj %string_obj, %t_obj %scm_num) {
-    %untagged_obj = and %t_obj %string_obj, sext(i4 8 to %t_obj)
+define %t_obj* @string-location(%t_obj %string, %t_obj %index) {
+    call void @assert-string(%t_obj %string)
+    call void @assert-number(%t_obj %index)
+
+    %untagged_obj = and %t_obj %string, sext(i4 8 to %t_obj)
     %string_ptr = inttoptr %t_obj %untagged_obj to %t_string*
-    %index = call i64 @num-to-i64(%t_obj %scm_num)
-    %loc = getelementptr %t_string* %string_ptr, i32 0, i32 1, i64 %index
-    ret %t_obj* %loc
+
+    
+    %index.i64 = ashr %t_obj %index, 2
+    %index.i32 = trunc i64 %index.i64 to i32
+
+    %size_ptr = getelementptr %t_string* %string_ptr, i32 0, i32 0
+    %char_ptr = getelementptr %t_string* %string_ptr, i32 0, i32 1, i32 %index.i32
+
+    %size = load %t_obj* %size_ptr
+    %in-bound = icmp slt i64 %index, %size
+    %positive = icmp sge i64 %index, 0
+    %ok = and i1 %in-bound, %positive
+    br i1 %ok, label %return, label %signal-error
+return:
+    ret %t_obj* %char_ptr
+
+signal-error:
+    call void @exit(i32 1)
+    unreachable
 }
 
 define %t_obj @string-ref(%t_obj %scm_str, %t_obj %scm_num) {
@@ -356,6 +401,7 @@ define void @string-set(%t_obj %scm_str, %t_obj %scm_num, %t_obj %val) {
 @symbol-table = global %t_obj 23 ; nil
 
 define %t_obj @intern(%t_obj %string) {
+    call void @assert-string(%t_obj %string)
     %table = load %t_obj* @symbol-table
     %result = call %t_obj @intern0(%t_obj %string, %t_obj %table)
     ret %t_obj %result
@@ -419,7 +465,7 @@ return-true:
 ;;; The halt closure
 ;;;=================================================================
 
-define cc 10 void @halt-continuation-proc(%t_obj %env, %t_obj %arity) {
+define fastcc void @halt-continuation-proc(%t_obj %env, %t_obj %arity) {
     call i32(i8*,...)* @printf(i8* bitcast([9 x i8]* @exit-msg to i8*))
     call void @exit(i32 0) noreturn
     unreachable
@@ -439,10 +485,10 @@ define void @scheme-error(i8* %msg) noreturn {
 }
 
 ;;; Helper function:
-define private protected cc 10 void @apply1(%t_obj %k, %t_obj %val) noreturn {
+define private protected fastcc void @apply1(%t_obj %k, %t_obj %val) noreturn {
     %nil = call %t_obj @get-nil()
     %args = call %t_obj @make-pair(%t_obj %val, %t_obj %nil)
-    tail call cc 10 void @apply(%t_obj %k, %t_obj 4, %t_obj %args) noreturn
+    tail call fastcc void @apply(%t_obj %k, %t_obj 4, %t_obj %args) noreturn
     unreachable
 }
 
@@ -453,7 +499,7 @@ define void @print-int(i64 %val) {
     ret void
 }
 
-@print-int-fmt = constant [5 x i8] c"%ld\0A\00"
+@print-int-fmt = constant [5 x i8] c"%lx\0A\00"
 
 define void @scheme-arity-error(i8* %c, %t_obj %e, %t_obj %g) noreturn {
     %ee = ashr %t_obj %e, 2

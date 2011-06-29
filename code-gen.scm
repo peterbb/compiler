@@ -16,8 +16,7 @@
 	    (list "define void @main() {"
 		  "%env = call %t_obj @get-nil()")
 	    main-code
-	    (list "ret void"
-		  "}")
+	    (list "}")
 	    *delayed*)))
   
 
@@ -249,7 +248,7 @@
 (define (make-lambda-definition label ast lex-env)
 
   (define (make-declaration-name name)
-    (sprintf "define private protected cc 10 void ~a(%t_obj %env, %t_obj %arity) noreturn {"
+    (sprintf "define private protected fastcc void ~a(%t_obj %env, %t_obj %arity) noreturn {"
 	     name))
 
   (define (lambda-arity)
