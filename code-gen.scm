@@ -277,7 +277,7 @@
   (define (make-declaration-name name)
     (string-append "define private protected fastcc void "
 		   name
-		   "(%t_obj %env, %t_obj %arity) noreturn {"))
+		   "(%t_obj %env, %t_obj %arity) noreturn align 8 {"))
 
   (define (lambda-arity)
     (if (lambda-fixed-arity? ast)

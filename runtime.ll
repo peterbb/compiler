@@ -465,7 +465,7 @@ return-true:
 ;;; The halt closure
 ;;;=================================================================
 
-define fastcc void @halt-continuation-proc(%t_obj %env, %t_obj %arity) {
+define fastcc void @halt-continuation-proc(%t_obj %env, %t_obj %arity) align 8 {
     call i32(i8*,...)* @printf(i8* bitcast([9 x i8]* @exit-msg to i8*))
     call void @exit(i32 0) noreturn
     unreachable
