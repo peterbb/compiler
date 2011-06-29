@@ -70,7 +70,7 @@
 (define (llvm:tail-call op args)
   (let ((formals (llvm:make-param-list op args)))
     (list (string-append "tail call cc 10 void " formals " noreturn")
-	  "unreachable")))
+	  "ret void")))
 
 (define (llvm:call target op args)
   (let ((formals (llvm:make-param-list op args)))

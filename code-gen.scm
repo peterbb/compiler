@@ -16,7 +16,7 @@
 	    (list "define void @main() {"
 		  "%env = call %t_obj @get-nil()")
 	    main-code
-	    (list "unreachable"
+	    (list "ret void"
 		  "}")
 	    *delayed*)))
   
@@ -61,76 +61,53 @@
 	 (error "ast->code: ast is: " ast))))
 
 (define (block-contains-variable? var block)
-  (if (null? block)
-      #f
-      (or (var=? var (car block))
-	  (block-contains-variable? var (cdr block)))))
-;;; cdr down the environment and find the block
-;;; which contains the variable.
-;;; XXX: Code is given in reverse.
-(define (gen-code:find-block var env-reg lex-env k)
-  (define (loop code block-reg lex-env)
-    (cond ((null? lex-env)
-	   (error "gen-code:find-block: variable not found:" var))
-	  ((block-contains-variable? var (car lex-env))
-	   (let ((tmp (llvm:gensym "%block")))
-	     (k (if (local-variable? var)
-		    (cons (llvm:get-car tmp block-reg)
-			  code)
-		    code)
-		(if (local-variable? var)
-		    tmp
-		    block-reg)
-		(car lex-env))))
-	  (else
-	   (let ((tmp (llvm:gensym "%block")))
-	     (loop (cons (llvm:get-cdr tmp block-reg) code)
-		   tmp
-		   (cdr lex-env))))))
-  (loop '() env-reg lex-env))
+  (and (pair? block)
+       (or (var=? var (car block))
+	   (block-contains-variable? var (cdr block)))))
 
-(define (gen-code:find-local-binding var env-reg lex-env)
-  (define (find-binding code block-reg block-env)
-    (if (var=? var (car block-env))
-	(values (reverse code)
-		block-reg)
-	(let ((tmp (llvm:gensym "%block")))
-	  (find-binding (cons (llvm:get-cdr tmp block-reg) code)
-			tmp 
-			(cdr block-env)))))
-
-  (gen-code:find-block var env-reg lex-env find-binding))
-
+(define (get-block-of-local-variable var lex-env env-reg k)
+  (let ((tmp (llvm:gensym "%env-")))
+    (if (block-contains-variable? var (car lex-env))
+	(cons (llvm:get-car tmp env-reg)
+	      (k (car lex-env) tmp))
+	(cons (llvm:get-cdr tmp env-reg)
+	      (get-block-of-local-variable var
+					   (cdr lex-env)
+					   tmp
+					   k)))))
 (define (ast->code:local-variable var target lex-env)
-  (call-with-values (lambda () (gen-code:find-local-binding var "%env" lex-env))
-    (lambda (code reg)
-      (append code
-	      (list (llvm:get-car target reg))))))
 
-(define (gen-code:find-vararg-binding var env-reg lex-env)
-  (define (find-binding code block-reg block-env)
-    (if (var=? var (cadr block-env))
-	(values #f (reverse code) block-reg)
+  (define (loop-block block-env block-reg)
+    (if (var=? var (car block-env))
+	(list (llvm:get-car target block-reg))
 	(let ((tmp (llvm:gensym "%block")))
-	  (find-binding (cons (llvm:get-cdr tmp block-reg) code)
-			tmp
-			(cdr block-env)))))
-  
-  (gen-code:find-block var env-reg lex-env
-		       (lambda (code.rev block-reg block-env)
-			 (if (var=? var (car block-env))
-			     (values #t (reverse code.rev) block-reg)
-			     (let ((tmp (llvm:gensym "%block")))
-			       (find-binding (cons (llvm:get-car tmp block-reg) code.rev)
-					     tmp
-					     block-env))))))
+	  (cons (llvm:get-cdr tmp block-reg)
+		(loop-block (cdr block-env) tmp)))))
+
+  (get-block-of-local-variable var lex-env "%env" loop-block))
+
 
 (define (ast->code:vararg-variable var target lex-env)
-  (call-with-values (lambda () (gen-code:find-vararg-binding var "%env" lex-env))
-    (lambda (in-car? code reg)
-      (if in-car?
-	  (append code (list (llvm:get-car target reg)))
-	  (append code (list (llvm:get-cdr target reg)))))))
+
+  (define (loop-env lex-env env-reg)
+    (let ((tmp (llvm:gensym "%env-")))
+      (cond ((var=? var (caar lex-env))
+	     (list (llvm:get-car target env-reg)))
+	    ((block-contains-variable? var (car lex-env))
+	     (cons (llvm:get-car tmp env-reg)
+		   (loop-block (cdar lex-env) tmp)))
+	    (else
+	     (cons (llvm:get-cdr tmp env-reg)
+		   (loop-env (cdr lex-env) tmp))))))
+
+  (define (loop-block block-env block-reg)
+    (if (var=? var (car block-env))
+	(list (llvm:get-cdr target block-reg))
+	(let ((tmp (llvm:gensym "%block")))
+	  (cons (llvm:get-cdr tmp block-reg)
+		(loop-block (cdr block-env) tmp)))))
+
+  (loop-env lex-env "%env"))
 
 (define (ast->code:global-variable var target lex-env)
   (list
@@ -271,6 +248,10 @@
 
 (define (make-lambda-definition label ast lex-env)
 
+  (define (make-declaration-name name)
+    (sprintf "define private protected cc 10 void ~a(%t_obj %env, %t_obj %arity) noreturn {"
+	     name))
+
   (define (lambda-arity)
     (if (lambda-fixed-arity? ast)
 	(length (lambda-variable* ast))
@@ -290,7 +271,7 @@
 	 (debug-tmp (llvm:gensym "%tmp")))
     (append
      (list
-      (sprintf "define private protected cc 10 void ~a(%t_obj %env, %t_obj %arity) noreturn {" label)
+      (make-declaration-name label)
       (sprintf "%arity-check = icmp ~a %t_obj %arity, ~a" arity-rel arity)
       "br i1 %arity-check, label %arity-check-pass, label %signal-arity-error"
       "arity-check-pass:")
@@ -332,7 +313,7 @@
 (define (ast->code:def/ass var expr kont target lex-env)
   (let ((val-reg (llvm:gensym "%v.")))
     (let ((code.expr (ast->code expr val-reg lex-env))
-	  (code.kont (ast->code (make-application kont (list (make-constant #f))) "%dummy" lex-env)))
+	  (code.kont (ast->code (make-application kont (list (make-constant #f))) target lex-env)))
       (cond ((global-variable? var)
 	     (append code.expr
 		     (list (string-append "store i64 " val-reg ", i64* @glob"
@@ -340,17 +321,23 @@
 		     code.kont))
 		   
 	    ((local-variable? var)
-	     (call-with-values (lambda () (gen-code:find-local-binding var "%env" lex-env))
-	       (lambda (code.binding binding.reg)
-		 (append code.expr
-			 code.binding
-			 (list (llvm:set-car! binding.reg val-reg))
-			 code.kont))))
+	     (append code.expr
+		     (ast->code:assign-local var val-reg lex-env)
+		     code.kont))
 	    ((vararg-variable? var)
 	     (error "assigmnet/def: assignment to vararg not implemented:" var))
 	    (else
 	     (error "ast->code:def/ass unknown variable type" var))))))
 
+(define (ast->code:assign-local var val-reg lex-env)
+  (define (loop-block block-env block-reg)
+    (if (var=? var (car block-env))
+	(list (llvm:set-car! block-reg val-reg))
+	(let ((tmp (llvm:gensym "%block-")))
+	  (cons (llvm:get-cdr tmp block-reg)
+		(loop-block (cdr block-env) tmp)))))
+  (get-block-of-local-variable var lex-env "%env" loop-block)) 
+  
 (define (ast->code:halt-continuation ast target lex-env)
   (let ((tmp (llvm:gensym "%untagged-halt")))
     (list
