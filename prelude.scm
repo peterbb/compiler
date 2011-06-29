@@ -300,8 +300,16 @@
   (let ((s (%make-string length)))
     (map-string (lambda (c) #\?) s)))
 
-(define (string-append s1 s2)
 
+(define (string-append . args)
+  (cond ((null? args) "")
+	((null? (cdr args)) (car args))
+	(else
+	 (string-append2
+	  (car args)
+	  (apply string-append (cdr args))))))
+
+(define (string-append2 s1 s2)
   (define (loop src src-i dst dst-i count)
     (define (loop src-i dst-i i)
       (if (< i count)
@@ -347,6 +355,7 @@
 	((number? x) (display-number x))
 	((symbol? x) (display-symbol x))
 	(else (display-string "#<unkown>"))))
+
 (define pp display)
 
 (define (display-char x)
@@ -398,7 +407,7 @@
   (cond ((char? x) (write-char x))
 	((boolean? x) (display-boolean x))
 	((string? x) (write-string x))
-	((null? x) (write-string "()"))
+	((null? x) (display-string "()"))
 	((symbol? x) (display-symbol x))
 	((pair? x) (print-list write x))
 	((number? x) (display-number x))
@@ -662,19 +671,24 @@
 
 ;;; Generic
 
-(define (map proc list)
-  (if (null? list)
+(define (map0 proc l)
+  (if (null? l)
       '()
-      (cons (proc (car list))
-	    (map proc (cdr list)))))
+      (cons (proc (car l))
+	    (map0 proc (cdr l)))))
+
+(define (map proc . args)
+  (if (null? (car args))
+      '()
+      (cons (apply0 proc (map0 car args))
+	    (apply0 map 
+		   (cons proc (map0 cdr args))))))
 
 
 ;;; Continuations
 
 (define (values . vals)
-  (call-with-current-continuation
-   (lambda (k)
-     (apply k vals))))
+  (error "values not implemented"))
 
 ;(define (call-with-values producer reciever)
 ;  (call-with-current-continuation
@@ -684,20 +698,25 @@
 (define (call-with-values source trunk)
   (error "call-with-values not implemented"))
 
-(define (apply proc args)
+(define (apply0 proc args)
+  ;(display (length args)) (newline)
   (if (list? args)
       (%apply proc
-	      (+ 1 (length args)) ;+1 = continuation
+	      (+ 1 (length args))
 	      args)
-      (error "apply: argument list:" args)))
+      (error "apply0: argument list:" args)))
+  
+
+(define (apply proc arg1 . argn)
+  (define (collect-args args)
+    (if (null? (cdr args))
+	(if (list? (car args))
+	    (car args)
+	    (error "apply: last element must be proper list"))
+	(cons (car args)
+	      (collect-args (cdr args)))))
+  (apply0 proc (collect-args (cons arg1 argn))))
 
 (define (call-with-current-continuation proc)
   (%call-with-current-continuation proc))
 
-;;; Formater
-
-(define (sprintf fmt . args)
-  (error "sprintf not implemented"))
-
-(define (printf fmt . args)
-  (error "printf not implemented"))
