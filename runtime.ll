@@ -298,7 +298,7 @@ next:
 
     %new-env = call %t_obj @make-pair(%t_obj %args, %t_obj %closure.env)
     tail call fastcc void %closure.code(%t_obj %new-env, %t_obj %given.arity) noreturn
-    unreachable
+    ret void
 
 not-closure:
     call void @print-int(i64 %closure)
