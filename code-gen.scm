@@ -18,7 +18,7 @@
 	    main-code
 	    (list "}")
 	    *delayed*)))
-  
+
 
 (define (generate-global-declarations var*)
   (cond ((null? var*)
@@ -156,7 +156,8 @@
 (define (compile-string value target)
 
   (define (encode-char i)
-    (sprintf "%t_obj ~a" (+ 1 (* (char->integer i) 8))))
+    (string-append "%t_obj "
+		   (number->string (+ 1 (* (char->integer i) 8)))))
 
   (define (encode-string s*)
     (cond ((null? s*) "")
@@ -170,17 +171,31 @@
 	(length (string-length value)))
     (add-delayed!
      (list
-      (sprintf "~a = global {%t_obj, [~a x %t_obj]} { %t_obj ~a, [ ~a x %t_obj ] [ ~a ]}"
-	       label length (* 4 length) length
-	       (encode-string (string->list value)))))
+      (string-append label
+		     " = global {%t_obj, ["
+		     (number->string length)
+		     " x %t_obj]} { %t_obj "
+		     (number->string (* 4 length))
+		     ", [ "
+		     (number->string length)
+		     " x %t_obj ] [ "
+		     (encode-string (string->list value))
+		     " ]}")))
     (list
-     (sprintf "~a = ptrtoint {%t_obj, [~a x %t_obj]}* ~a to %t_obj" tmp length label)
-     (sprintf "~a = or %t_obj ~a, 6" target tmp))))
-    
+     (string-append tmp
+		    " = ptrtoint {%t_obj, ["
+		    (number->string length)
+		    " x %t_obj]}* "
+		    label
+		    " to %t_obj")
+     (string-append target " = or %t_obj " tmp ", 6"))))
+
 (define (compile-symbol value target)
   (let ((tmp (llvm:gensym "%sym-as-str")))
     (append (compile-string (symbol->string value) tmp)
-	    (list (sprintf "~a = call %t_obj @intern(%t_obj ~a)" target tmp)))))
+	    (list (string-append target
+				 " = call %t_obj @intern(%t_obj "
+				 tmp ")")))))
 
 (define (ast->code:if ast target lex-env)
   (let ((pred-reg (llvm:gensym "%if-pred-"))
@@ -190,14 +205,24 @@
     (let ((code.pred (ast->code (if-predicate ast) pred-reg lex-env))
 	  (code.cons (ast->code (if-consequence ast) target lex-env))
 	  (code.alt  (ast->code (if-alternative ast) target lex-env)))
-      (append code.pred
-	      (list (sprintf "~a = icmp ne %t_obj ~a, ~a" pred-reg.i1 pred-reg (llvm:false))
-		    (sprintf "br i1 ~a, label %~a, label %~a" pred-reg.i1 true-label false-label)
-		    (sprintf "~a:" true-label))
-	      code.cons
-	      (list "unreachable"
-		    (sprintf "~a:" false-label))
-	      code.alt))))
+      (append 
+       code.pred
+       (list 
+	(string-append pred-reg.i1
+		       " = icmp ne %t_obj "
+		       pred-reg
+		       " ,"
+		       (llvm:false))
+	(string-append "br i1 "
+		       pred-reg.i1
+		       ", label %"
+		       true-label
+		       ", label %"
+		       false-label)
+	(string-append true-label ":"))
+       code.cons
+       (list (string-append false-label ":"))
+       code.alt))))
 
 (define (ast->code:application ast target lex-env)
   (define (make-args-value-code reg* exp*)
@@ -216,7 +241,7 @@
 
 (define (ast->code:builtin-application op args)
   (let ((name (symbol->string (builtin-variable-name op))))
-    (llvm:tail-call (sprintf "@\"builtin:~a\"" name) args)))
+    (llvm:tail-call (string-append "@\"builtin:" name "\"") args)))
 
 (define (ast->code:generic-application op args arity lex-env)
 
@@ -242,14 +267,17 @@
   (let ((label (llvm:gensym "@lambda-")))
     (add-delayed!
      (make-lambda-definition label ast lex-env))
-    (list 
-     (sprintf "~a = call %t_obj @make-closure(%t_code ~a, %t_obj %env)" target label ))))
+    (list (string-append target
+			 " = call %t_obj @make-closure(%t_code "
+			 label
+			 ", %t_obj %env)"))))
 
 (define (make-lambda-definition label ast lex-env)
 
   (define (make-declaration-name name)
-    (sprintf "define private protected fastcc void ~a(%t_obj %env, %t_obj %arity) noreturn {"
-	     name))
+    (string-append "define private protected fastcc void "
+		   name
+		   "(%t_obj %env, %t_obj %arity) noreturn {"))
 
   (define (lambda-arity)
     (if (lambda-fixed-arity? ast)
@@ -271,21 +299,34 @@
     (append
      (list
       (make-declaration-name label)
-      (sprintf "%arity-check = icmp ~a %t_obj %arity, ~a" arity-rel arity)
+      (string-append "%arity-check = icmp "
+		     arity-rel
+		     " %t_obj %arity, "
+		     (number->string arity))
       "br i1 %arity-check, label %arity-check-pass, label %signal-arity-error"
       "arity-check-pass:")
      lambda-code
      (list
-      "unreachable"
       "signal-arity-error:"
-      (sprintf "~a = bitcast [~a x i8]* ~a to i8*"
-	       debug-tmp debug-length debug-label)
-      (sprintf "call void @scheme-arity-error(i8* ~a, %t_obj ~a, %t_obj %arity)"
-	       debug-tmp arity)
-      "unreachable"
+      (string-append debug-tmp
+		     " = bitcast ["
+		     (number->string debug-length)
+		     " x i8]* "
+		     debug-label
+		     " to i8*")
+      (string-append "tail call fastcc void @scheme-arity-error(i8* "
+		     debug-tmp
+		     ", %t_obj "
+		     (number->string arity)
+		     ", %t_obj %arity)")
+      "ret void"
       "}"
-      (sprintf "~a = constant [~a x i8] c\"~a\\00\""
-	       debug-label debug-length debug-name)))))
+      (string-append debug-label
+		     " = constant ["
+		     (number->string debug-length)
+		     " x i8] c\""
+		     debug-name
+		     "\\00\"")))))
 
 
 (define (ast->code:ar ast target lex-env)
@@ -318,7 +359,7 @@
 		     (list (string-append "store i64 " val-reg ", i64* @glob"
 					  (number->string (global-variable-name var))))
 		     code.kont))
-		   
+	    
 	    ((local-variable? var)
 	     (append code.expr
 		     (ast->code:assign-local var val-reg lex-env)
@@ -336,7 +377,7 @@
 	  (cons (llvm:get-cdr tmp block-reg)
 		(loop-block (cdr block-env) tmp)))))
   (get-block-of-local-variable var lex-env "%env" loop-block)) 
-  
+
 (define (ast->code:halt-continuation ast target lex-env)
   (let ((tmp (llvm:gensym "%untagged-halt")))
     (list

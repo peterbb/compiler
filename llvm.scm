@@ -14,10 +14,10 @@
 	    (llvm:gensym-list (- n 1) tag))))
 
 (define (llvm:fixnum->word target obj)
-  (sprintf "~a = ashr %t_obj ~a, 2" target obj))
+  (string-append target " = ashr %t_obj " obj ", 2"))
 
 (define (llvm:word->fixnum target obj)
-  (sprintf "~a = shl %t_obj ~a, 2" target obj))
+  (string-append target " = shl %t_obj " obj ", 2"))
 
 (define (llvm:number n)
   (number->string (* 4 n)))
@@ -65,7 +65,7 @@
    target " = call %t_obj @get-cdr(%t_obj " source ")"))
 
 (define (llvm:set-car! target value)
-  (sprintf "call void @set-car(%t_obj ~a, %t_obj ~a)" target value))
+  (string-append "call void @set-car(%t_obj " target ", %t_obj " value ")"))
 
 (define (llvm:tail-call op args)
   (let ((formals (llvm:make-param-list op args)))
@@ -124,10 +124,15 @@
   (let ((label (llvm:gensym "@error-msg"))
 	(length (+ 2 (string-length e))))
     (set! *builtin-code*
-	  (cons (sprintf "~a = constant [~a x i8] c\"~a\\0A\\00\"" label length e)
+	  (cons (string-append
+		 label " = constant ["
+		 (number->string length)
+		 " x i8] c\"" e "\\0A\\00\"")
 		*builtin-code*))
-    (list (sprintf "call void @scheme-error(i8* bitcast([~a x i8]* ~a to i8*)) noreturn"
-		   length label)
-	  "unreachable")))
+    (list
+     (string-append "tail call fastcc void @scheme-error(i8* bitcast(["
+		    (number->string length)
+		    " x i8]* " label " to i8*)) noreturn")
+	  "ret void")))
 
    

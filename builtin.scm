@@ -87,7 +87,8 @@
  "%char?" '("%obj")
  (list 
   "%res.i1 = call i1 @is-char(%t_obj %obj)"
-  (string-append "%res = select i1 %res.i1, %t_obj " (llvm:true) ", %t_obj " (llvm:false))
+  (string-append "%res = select i1 %res.i1, %t_obj "
+		 (llvm:true) ", %t_obj " (llvm:false))
   (llvm:return "%res")))
 
 (llvm:declare-builtin
@@ -153,7 +154,7 @@
  "%symbol?" '("%o")
  (list
   "%tag = and %t_obj %o, 7"
-  (sprintf "%res.1 = icmp eq %t_obj %tag, ~a" (llvm:symbol-tag))
+  (string-append "%res.1 = icmp eq %t_obj %tag, " (llvm:symbol-tag))
   (llvm:select "%res" "%res.1" (llvm:true) (llvm:false))
   (llvm:return "%res")))
 
@@ -161,7 +162,7 @@
  "%symbol->string" '("%o")
  (list
   "%untagged = and %t_obj %o, sext(i4 8 to %t_obj)"
-  (sprintf "%tagged = or %t_obj %untagged, ~a" (llvm:string-tag))
+  (string-append "%tagged = or %t_obj %untagged, " (llvm:string-tag))
   (llvm:return "%tagged")))
 
 (llvm:declare-builtin
@@ -195,7 +196,7 @@
 (llvm:declare-builtin
  "%eof-object?" '("%o")
  (list 
-  (sprintf "%is-eof = icmp eq %t_obj %o, ~a" (llvm:eof))
+  (string-append "%is-eof = icmp eq %t_obj %o, " (llvm:eof))
   (llvm:select "%result" "%is-eof" (llvm:true) (llvm:false))
   (llvm:return "%result")))
 
@@ -261,5 +262,5 @@
 
 (llvm:declare-builtin
  "%halt" '()
- (list "call void @exit(i64 123) noreturn"
+ (list "call void @exit(i32 123) noreturn"
        "unreachable"))
