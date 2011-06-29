@@ -183,8 +183,8 @@ return:
     ret %t_obj %tagged_obj
 
 signal-error:
-    call void @scheme-error(i8* bitcast([28 x i8]* @make-pair-error to i8*)) noreturn
-    unreachable
+    tail call fastcc void @scheme-error(i8* bitcast([28 x i8]* @make-pair-error to i8*)) noreturn
+    ret %t_obj 0
 }
 @make-pair-error = constant [28 x i8] c"make-pair: alignment error\0A\00"
 
@@ -200,8 +200,8 @@ define void @assert-pair(%t_obj %pair) {
 ok:
     ret void
 signal-error:
-    call void @scheme-error(i8* bitcast([14 x i8]* @get-pair-error to i8*))
-    unreachable
+    tail call fastcc void @scheme-error(i8* bitcast([14 x i8]* @get-pair-error to i8*))
+    ret void
 }
 @get-pair-error = constant [14 x i8] c"\0Aerror: pair\0A\00"
 
@@ -289,7 +289,7 @@ define %t_obj @get-env(%t_obj %o) {
     ret %t_obj %env
 }
 
-define fastcc void @apply(%t_obj %closure, %t_obj %given.arity, %t_obj %args) noreturn {
+define private protected fastcc void @apply(%t_obj %closure, %t_obj %given.arity, %t_obj %args) noreturn {
     %closure-ok = call i1 @is-closure(%t_obj %closure)
     br i1 %closure-ok, label %next, label %not-closure
 next:
@@ -302,8 +302,8 @@ next:
 
 not-closure:
     call void @print-int(i64 %closure)
-    call void @scheme-error(i8* bitcast([20 x i8]* @closure-error-msg to i8*))
-    unreachable
+    tail call fastcc void @scheme-error(i8* bitcast([20 x i8]* @closure-error-msg to i8*))
+    ret void
 }
 @closure-error-msg = constant[20 x i8] c"error: apply: type\0A\00"
 
@@ -478,7 +478,7 @@ define fastcc void @halt-continuation-proc(%t_obj %env, %t_obj %arity) {
 ;;; Signal runtime errors
 ;;;=================================================================
 
-define void @scheme-error(i8* %msg) noreturn {
+define fastcc void @scheme-error(i8* %msg) noreturn {
     call i32(i8*,...)* @printf(i8* %msg)
     call void @exit(i32 1) noreturn
     unreachable
@@ -501,7 +501,7 @@ define void @print-int(i64 %val) {
 
 @print-int-fmt = constant [5 x i8] c"%lx\0A\00"
 
-define void @scheme-arity-error(i8* %c, %t_obj %e, %t_obj %g) noreturn {
+define fastcc void @scheme-arity-error(i8* %c, %t_obj %e, %t_obj %g) noreturn {
     %ee = ashr %t_obj %e, 2
     %gg = ashr %t_obj %g, 2
     %fmt = bitcast [37 x i8]* @arity-error-fmt to i8*
