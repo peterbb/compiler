@@ -19,16 +19,16 @@
 (define (compile filename k)
   (let* ((file-content (io:read-file filename))
 	 (with-prelude (cons (list 'load "prelude.scm") file-content))
-	 ;(with-prelude file-content)
+	;(with-prelude file-content)
 	 (ast* (parse with-prelude)))
     (k ast* (map cdr *global-variables*))))
 
 (define (make-raw-print* header)
   (lambda (k)
     (lambda (ast globals)
-      (printf ";;;; ~a~%" header)
+      (display ";;;; ") (display header) (newline)
       (pp ast)
-      (printf "~%")
+      (display "~%")
       (k ast globals))))
 
 (define (cps-stage k)
@@ -51,7 +51,7 @@
       (if (and (not (char=? #\{ (string-ref x (- (string-length x) 1))))
 	       (not (string=? x "}"))
 	       (not (char=? #\@ (string-ref x 0))))
-	  (printf "    "))
+	  (display "    "))
       
       (display x)
       (newline))
@@ -61,7 +61,7 @@
 
 (define done
   (lambda (ast globals)
-    (printf ";;; Bye~%")))
+    (display ";;; Bye~%")))
 
 (define (compose-stages s1 s2)
   (lambda (k)
@@ -84,7 +84,8 @@
 	    (error "unkown argument:" (car args))))))
 
 
-
+(display ";Hello ....")
+(newline)
 (let* ((args (command-line-arguments))
        (file (car args))
        (stages (make-pipeline (cdr args))))

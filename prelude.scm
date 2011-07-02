@@ -720,3 +720,20 @@
 (define (call-with-current-continuation proc)
   (%call-with-current-continuation proc))
 
+(define (open-input-file filename)
+  (error "open-input-file not implemented" filename))
+
+(define (close-input-port port)
+  (error "close-input-port not implemented" port))
+
+(define (command-line-arguments)
+  (error "command-line-arguments not implemented"))
+
+(define (for-each x y)
+  (error "for each not implemented"))
+
+(define (number->string n)
+  (error "number->string not implemented"))
+
+(define (string->list n)
+  (error "string->list not implemented"))
