@@ -76,36 +76,6 @@ signal-error:
 }
 @assert-number-fmt = constant [16 x i8] c"\0Aassert-number\0A\00"
 
-define %t_obj @add-numbers(%t_obj %a, %t_obj %b) {
-    %res = add nsw %t_obj %a, %b
-    ret %t_obj %res
-}
-
-define %t_obj @sub-numbers(%t_obj %a, %t_obj %b) {
-    %res = sub nsw %t_obj %a, %b
-    ret %t_obj %res
-}
-
-define %t_obj @mul-numbers(%t_obj %a, %t_obj %b) {
-    %res = mul nsw %t_obj %a, %b
-    ret %t_obj %res
-}
-
-define %t_obj @div-numbers(%t_obj %a, %t_obj %b) {
-    %res = sdiv %t_obj %a, %b
-    ret %t_obj %res
-}
-
-define i1 @eq-numbers(%t_obj %a, %t_obj %b) {
-    %res = icmp eq i64 %a, %b
-    ret i1 %res
-}
-
-define i1 @gt-numbers(%t_obj %a, %t_obj %b) {
-    %res = icmp sgt i64 %a, %b
-    ret i1 %res
-}
-
 ;;;=================================================================
 ;;; Characters
 ;;;=================================================================
@@ -450,7 +420,7 @@ loop:
 in-loop:
     %c1 = call %t_obj @string-ref(%t_obj %s1, %t_obj %i)
     %c2 = call %t_obj @string-ref(%t_obj %s2, %t_obj %i)
-    %next-i = call %t_obj @add-numbers(%t_obj %i, %t_obj 4)
+    %next-i = add %t_obj %i, 4
     %char-eq = icmp eq %t_obj %c1, %c2
     br i1 %char-eq, label %loop, label %return-false
 

@@ -32,7 +32,10 @@
 (llvm:declare-builtin
  "%+" '("%a" "%b")
  (list
-  (llvm:call "%res" "@add-numbers" '("%a" "%b"))
+  (llvm:fixnum->word "%a.w" "%a")
+  (llvm:fixnum->word "%b.w" "%b")
+  "%res.w = add i64 %a.w, %b.w"
+  (llvm:word->fixnum "%res" "%res.w")
   (llvm:return "%res")))
 
 (llvm:declare-builtin
@@ -74,7 +77,7 @@
 (llvm:declare-builtin
  "%>" '("%a" "%b")
  (list
-  "%res.i1 = call i1 @gt-numbers(%t_obj %a, %t_obj %b)"
+  "%res.i1 = icmp sgt %t_obj %a, %b"
   (llvm:select "%res" "%res.i1" (llvm:true) (llvm:false))
   (llvm:return "%res")))
 
