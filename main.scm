@@ -12,81 +12,69 @@
 (load "code-gen.scm")
 (load "builtin.scm")
 
+;;; "args" is a list of strings, which are the arguments.
+;;; The first element in "args" is the name of the file to compile.
+;;; The rest of the arguments should be the names of the stages to preform
+;;; in the order as they appear.
+(define (main args)
+  (let* ((file-name (car args))
+	 (pipeline (make-pipeline (cdr args)))
+	 (code (add-static-prelude (io:read-file file-name)))
+	 (ast (parse code)))
+    (pipeline ast)))
 
-;;; Pipeline:
-;;; parse -> alpha -> cps -> beta
+;;; This code is implicitly appended to the begining of the
+;;; compiled file.
+(define *static-prelude*
+  (list
+   '(load "prelude.scm")
+   ))
 
-(define (compile filename k)
-  (let* ((file-content (io:read-file filename))
-	 (with-prelude (cons (list 'load "prelude.scm") file-content))
-	;(with-prelude file-content)
-	 (ast* (parse with-prelude)))
-    (k ast* (map cdr *global-variables*))))
-
-(define (make-raw-print* header)
-  (lambda (k)
-    (lambda (ast globals)
-      (display ";;;; ") (display header) (newline)
-      (pp ast)
-      (display "~%")
-      (k ast globals))))
-
-(define (cps-stage k)
-  (lambda (ast globals)
-    (k (cps-convert ast) globals)))
-
-(define (beta-stage k)
-  (lambda (ast globals)
-    (k (beta-reduce ast) globals)))
-
-(define (gen-stage k)
-  (lambda (ast globals)
-    (k (generate-code ast globals)
-       globals)))
-
-(define (gen-print k)
-  (lambda (code globals)
-
-    (define (display/line x)
-      (if (and (not (char=? #\{ (string-ref x (- (string-length x) 1))))
-	       (not (string=? x "}"))
-	       (not (char=? #\@ (string-ref x 0))))
-	  (display "    "))
-      
-      (display x)
-      (newline))
-
-    (map display/line code)
-    (k code globals)))
-
-(define done
-  (lambda (ast globals)
-    (display ";;; Bye~%")))
-
-(define (compose-stages s1 s2)
-  (lambda (k)
-    (s1 (s2 k))))
-
-;;;;;;
-(define stages
-  (list	(cons "raw-print" (make-raw-print* "ast"))
-	(cons "cps" cps-stage)
-	(cons "beta" beta-stage)
-	(cons "code" gen-stage)
-	(cons "code-print" (compose-stages gen-stage gen-print))))
+(define (add-static-prelude code)
+  (append *static-prelude* code))
 
 (define (make-pipeline args)
   (if (null? args)
-      done
-      (let ((stage (assoc (car args) stages)))
+      (lambda (ast)
+	(display "; Done\n"))
+      (let ((stage (assoc (car args) *stages*))
+	    (rest-stages (make-pipeline (cdr args))))
 	(if stage
-	    ((cdr stage) (make-pipeline (cdr args)))
-	    (error "unkown argument:" (car args))))))
+	    (lambda (ast)
+	      (rest-stages ((cdr stage) ast)))
+	    (error "unknown argument:" (car args))))))
 
+(define *stages*
+  (list	(cons "ast"
+	      (lambda (ast)
+		(display ";;; AST:\n")
+		(pp ast)
+		(newline)
+		ast))
 
-(display ";Hello ....")
-(newline)
-(let* ((args (command-line-arguments))
-       (file (car args))
-       (stages (make-pipeline (cdr args))))
-  (compile file stages))
+	(cons "cps"
+	      cps-convert)
+
+	(cons "beta"
+	      beta-reduce)
+
+	(cons "gen"
+	      (lambda (ast)
+		(generate-code ast (map cdr *global-variables*))))
+
+	(cons "code"
+	      (lambda (code)
+		(display ";;; LLVM:\n")
+		(for-each print-llvm-line code)
+		code))
+	))
+
+(define (print-llvm-line line)
+  (if (and (not (char=? #\{ (string-ref line (- (string-length line) 1))))
+	   (not (string=? line "}"))
+	   (not (char=? #\@ (string-ref line 0))))
+      (display "    "))
+  (display line)
+  (newline))
+
+(main (command-line-arguments))

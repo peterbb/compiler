@@ -2,7 +2,7 @@
 
 preludeandcompile() {
     cat runtime.ll
-    ./main $1 cps beta code-print # 
+    ./main $1 cps beta gen code # 
 }
 
 if [[ $# -eq 1 ]]; then
