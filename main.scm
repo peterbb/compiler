@@ -27,7 +27,7 @@
 ;;; compiled file.
 (define *static-prelude*
   (list
-   '(load "prelude.scm")
+   '(load "prelude/all.scm")
    ))
 
 (define (add-static-prelude code)

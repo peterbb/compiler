@@ -16,16 +16,3 @@
   (%assert-string "string->symbol" x)
   (%intern (string-copy x)))
   
-;;; Error
-(define (error msg . args)
-  (define (loop args)
-    (if (pair? args)
-	(begin (write (car args))
-	       (display " ")
-	       (loop (cdr args)))))
-  (newline)
-  (display "error: ")
-  (display msg)
-  (loop args)
-  (newline)
-  (%halt))

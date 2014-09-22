@@ -33,8 +33,8 @@
 ;;    (ar (t) (define/k v t k))))
 (define cps-convert-def
   (lambda (def)
-    (let ((k (make-local-variable (gensym)))
-	  (t (make-local-variable (gensym)))
+    (let ((k (make-local-variable (gensym2)))
+	  (t (make-local-variable (gensym2)))
 	  (e (definition-expression def)))
       (make-activation-record
        k
@@ -69,8 +69,8 @@
   (lambda (exp* F F*)
     (if (null? (cdr exp*))
 	(F (car exp*))
-	(let ((t (make-local-variable (gensym)))
-	      (k (make-local-variable (gensym))))
+	(let ((t (make-local-variable (gensym2)))
+	      (k (make-local-variable (gensym2))))
 	  (make-activation-record 
 	   k
 	   (make-application1
@@ -87,7 +87,7 @@
 ;; F[c] ==> (ar (k) (k c))
 (define cps-convert-const
   (lambda (exp)
-    (let ((k (make-local-variable (gensym))))
+    (let ((k (make-local-variable (gensym2))))
       (make-activation-record
        k
        (make-application1 k exp)))))
@@ -97,8 +97,8 @@
 
 (define cps-convert-lambda
   (lambda (exp)
-    (let ((k1 (make-local-variable (gensym)))
-	  (k2 (make-local-variable (gensym)))
+    (let ((k1 (make-local-variable (gensym2)))
+	  (k2 (make-local-variable (gensym2)))
 	  (vars (lambda-variable* exp))
 	  (body (lambda-body exp)))
       (make-activation-record
@@ -113,8 +113,8 @@
 ;;; F[(if e1 e2 e3)] ==> ?
 (define cps-convert-if
   (lambda (exp)
-    (let ((k (make-local-variable (gensym)))
-	  (t (make-local-variable (gensym)))
+    (let ((k (make-local-variable (gensym2)))
+	  (t (make-local-variable (gensym2)))
 	  (pred (if-predicate exp))
 	  (con (if-consequence exp))
 	  (alt (if-alternative exp)))
@@ -132,8 +132,8 @@
 ;;; F[(set! x e)] ==> ???
 (define cps-convert-set!
   (lambda (exp)
-    (let ((k (make-local-variable (gensym)))
-	  (t (make-local-variable (gensym)))
+    (let ((k (make-local-variable (gensym2)))
+	  (t (make-local-variable (gensym2)))
 	  (e (assignment-expression exp)))
 
       (make-activation-record
@@ -146,8 +146,8 @@
 
 (define cps-convert-app
   (lambda (exp)
-    (let ((k (make-local-variable (gensym)))
-	  (t (make-local-variable (gensym))))
+    (let ((k (make-local-variable (gensym2)))
+	  (t (make-local-variable (gensym2))))
       (make-activation-record
        k
        (make-application1
@@ -164,7 +164,7 @@
     (if (null? exp*)
 	(let ((vars (reverse vars)))
 	  (make-application (car vars) (cdr vars)))
-	(let ((t (make-local-variable (gensym)))
+	(let ((t (make-local-variable (gensym2)))
 	      (e (car exp*))
 	      (e* (cdr exp*)))
 	  (make-application1

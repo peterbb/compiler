@@ -5,7 +5,7 @@
 
 
 (define (llvm:gensym t)
-  (string-append t (number->string (gensym))))
+  (string-append t (number->string (gensym2))))
 
 (define (llvm:gensym-list n tag)
   (if (= 0 n)

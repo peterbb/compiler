@@ -15,12 +15,12 @@
   (let ((binding (assq name *global-variables*)))
     (if binding
 	(cdr binding)
-	(push-global! name (make-global-variable/original (gensym) name #f)))))
+	(push-global! name (make-global-variable/original (gensym2) name #f)))))
 
 (define (define-global-variable! name)
   (let ((binding (assq name *global-variables*)))
     (cond ((not binding)
-	   (push-global! name (make-global-variable/original (gensym) name #t)))
+	   (push-global! name (make-global-variable/original (gensym2) name #t)))
 	  (else
 	   (global-variable-defined! (cdr binding))
 	   (cdr binding)))))
@@ -155,10 +155,10 @@
 (define (parse-lambda-list l)
   (cond ((null? l) '())
 	((symbol? l)
-	 (list (cons l (make-vararg-variable/original (gensym) l))))
+	 (list (cons l (make-vararg-variable/original (gensym2) l))))
 	((and (pair? l)
 	      (symbol? (car l)))
-	 (cons (cons (car l) (make-local-variable/original (gensym) (car l)))
+	 (cons (cons (car l) (make-local-variable/original (gensym2) (car l)))
 	       (parse-lambda-list (cdr l))))
 	(else
 	 (error "parse-lambda-list: malformed:" l))))
@@ -291,7 +291,7 @@
 ;;- what is this doing here?
 (define (gensym-symbol)
   (string->symbol (string-append "tmp"
-				 (number->string (gensym)))))
+				 (number->string (gensym2)))))
 (define (and->exp0 e)
   (cond ((null? e) #t)
 	((null? (cdr e)) (car e))

@@ -6,7 +6,7 @@
 
 (define gensym-counter 0)
 
-(define gensym
+(define gensym2
   (lambda ()
     (set! gensym-counter (+ 1 gensym-counter))
     gensym-counter))
@@ -16,5 +16,5 @@
   (lambda (n)
     (if (= n 0)
 	'()
-	(cons (gensym)
+	(cons (gensym2)
 	      (gensym-list (- n 1))))))
