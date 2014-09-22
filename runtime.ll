@@ -12,11 +12,11 @@ declare i32 @printf(i8*, ...)
 
 ;;; Tags:
 ;;; Number:      00
-;;; Character : 001
+;;; Character:  001
 ;;; Pair:       010
 ;;; Symbol:     011           
 ;;; Closure:    101
-;;; String      110
+;;; Raw         110
 ;;; Other:      111
 ;;;     -   111 #f
 ;;;     -  1111 #t
@@ -48,11 +48,23 @@ out-of-memory:
 ;;; Numbers
 ;;;=================================================================
 define %t_obj @i64-to-number(i64 %num) {
-    %res = shl i64 %num, 2
+    %upper2 = lshr i64 %num, 62
+    %overflow = icmp ne i64 %upper2, 0
+    br i1 %overflow, label %IsOverflow, label %IsOK
+
+    IsOverflow:
+    br label %Return
+
+    IsOK:
+    %res.value = shl i64 %num, 2
+    br label %Return
+
+    Return:
+    %res = phi %t_obj [%res.value, %IsOK], [15, %IsOverflow]
     ret %t_obj %res
 }
 
-define i64 @num-to-i64(%t_obj %num) {
+define i64 @number-to-i64(%t_obj %num) {
     %res = ashr i64 %num, 2
     ret i64 %res
 }
@@ -277,6 +289,23 @@ not-closure:
 }
 @closure-error-msg = constant[20 x i8] c"error: apply: type\0A\00"
 
+;;;=================================================================
+;;; Raw pointer
+;;;=================================================================
+
+define %t_obj @make-raw-pointer(i64 %ptr) {
+    %ptr.lsb3 = and i64 %ptr, 7
+    %aligned = icmp eq i64 %ptr.lsb3, 0
+    br i1 %aligned, label %IsAligned, label %AlignError
+
+IsAligned:
+    %obj = or i64 %ptr, 6
+    ret %t_obj %obj
+
+AlignError:
+    call void @exit(i32 1)
+    unreachable
+}
 
 ;;;=================================================================
 ;;; String (really just a tagged vector)
@@ -284,7 +313,7 @@ not-closure:
 ; %t_string = type { %t_obj, [0 x %t_obj ] }
 
 define %t_obj @make-string(%t_obj %num) {
-    %elements.1 = call i64 @num-to-i64(%t_obj %num)
+    %elements.1 = call i64 @number-to-i64(%t_obj %num)
     %elements = add %t_obj %elements.1, 1
     %raw_ptr = call i64* @alloc(i64 %elements)
     %str_ptr = bitcast i64* %raw_ptr to %t_string*

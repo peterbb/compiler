@@ -14,23 +14,10 @@
 	    (llvm:gensym-list (- n 1) tag))))
 
 (define (llvm:fixnum->word target obj)
-  (string-append target " = ashr %t_obj " obj ", 2"))
+  (string-append target " = call i64 @number-to-i64(%t_obj " obj ")\n"))
 
 (define (llvm:word->fixnum target obj)
-  (let ((labelOverflow (llvm:gensym "IfOverflow"))
-         (labelOK (llvm:gensym "Otherwise"))
-         (labelEnd (llvm:gensym "End")))
-      (string-append
-        obj ".upper2 = lshr %t_obj " obj ", 62\n"
-        obj ".overflow = icmp ne %t_obj " obj ".upper2, 0\n"
-        "br i1 " obj ".overflow, label %" labelOverflow ", label %" labelOK "\n"
-        labelOverflow ":\n"
-        "br label %" labelEnd "\n"
-        labelOK ":\n"
-        target ".pre = shl %t_obj " obj ", 2"
-        "br label %" labelEnd "\n"
-        labelEnd ":\n"
-        target " = phi %t_obj [ " target ".pre, %" labelOK "], [ " (llvm:false) ", %" labelOverflow "]\n")))
+  (string-append target " = call %t_obj @i64-to-number(i64 " obj ")\n"))
 
 (define (llvm:number n)
   (number->string (* 4 n)))
@@ -143,9 +130,10 @@
 		 " x i8] c\"" e "\\0A\\00\"")
 		*builtin-code*))
     (list
-     (string-append "tail call fastcc void @scheme-error(i8* bitcast(["
-		    (number->string length)
-		    " x i8]* " label " to i8*)) noreturn")
-	  "ret void")))
+     (string-append 
+        "tail call fastcc void @scheme-error(i8* bitcast(["
+                (number->string length)
+                " x i8]* " label " to i8*)) noreturn")
+        "ret void")))
 
    
