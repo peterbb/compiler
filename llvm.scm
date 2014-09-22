@@ -17,7 +17,20 @@
   (string-append target " = ashr %t_obj " obj ", 2"))
 
 (define (llvm:word->fixnum target obj)
-  (string-append target " = shl %t_obj " obj ", 2"))
+  (let ((labelOverflow (llvm:gensym "IfOverflow"))
+         (labelOK (llvm:gensym "Otherwise"))
+         (labelEnd (llvm:gensym "End")))
+      (string-append
+        obj ".upper2 = lshr %t_obj " obj ", 62\n"
+        obj ".overflow = icmp ne %t_obj " obj ".upper2, 0\n"
+        "br i1 " obj ".overflow, label %" labelOverflow ", label %" labelOK "\n"
+        labelOverflow ":\n"
+        "br label %" labelEnd "\n"
+        labelOK ":\n"
+        target ".pre = shl %t_obj " obj ", 2"
+        "br label %" labelEnd "\n"
+        labelEnd ":\n"
+        target " = phi %t_obj [ " target ".pre, %" labelOK "], [ " (llvm:false) ", %" labelOverflow "]\n")))
 
 (define (llvm:number n)
   (number->string (* 4 n)))
